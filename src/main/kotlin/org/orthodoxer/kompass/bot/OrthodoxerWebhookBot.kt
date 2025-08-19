@@ -14,13 +14,14 @@ class OrthodoxerWebhookBot(
     @Value("\${telegram.bot-token}") private val botToken: String,
     @Value("\${telegram.bot-username}") private val botUsername: String,
     @Value("\${telegram.webhook-path}") private val webhookPath: String
-) : SpringWebhookBot(SetWebhook(webhookPath)) {
+) : SpringWebhookBot(SetWebhook().apply { url = webhookPath }) {
 
     override fun getBotToken(): String = botToken
     override fun getBotUsername(): String = botUsername
     override fun getBotPath(): String = webhookPath
 
     override fun onWebhookUpdateReceived(update: Update): SendMessage? {
+        println("✅ Получено обновление от Telegram: $update")
         return botService.processUpdate(update)
     }
 }
