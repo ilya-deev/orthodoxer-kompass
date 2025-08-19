@@ -21,7 +21,6 @@ class OrthodoxerWebhookBot(
     override fun getBotPath(): String = webhookPath
 
     override fun onWebhookUpdateReceived(update: Update): SendMessage? {
-        println("✅ Получено обновление от Telegram: $update")
-        return botService.processUpdate(update)
+        return null
     }
 }
