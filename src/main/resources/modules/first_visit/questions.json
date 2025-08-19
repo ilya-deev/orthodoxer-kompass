@@ -1,0 +1,16 @@
+[ {
+  "id": 1,
+  "text": {"ru": "Что делать при входе в храм?", "de": "Was tut man beim Betreten der Kirche?"},
+  "options": ["Креститься и поклониться", "Крикнуть", "Снять обувь", "Фото"],
+  "correctIndex": 0
+},
+  { "id": 2, "text": {"ru": "Как вести себя во время службы?", "de": "Wie verhält man sich während des Gottesdienstes?"}, "options": ["С уважением и молча", "Разговаривать", "Фоткать", "Играть"], "correctIndex": 0 },
+  { "id": 3, "text": {"ru": "Можно ли ходить по храму?", "de": "Darf man sich in der Kirche bewegen?"}, "options": ["При необходимости тихо", "Бегать", "Кричать", "Нет"], "correctIndex": 0 },
+  { "id": 4, "text": {"ru": "Что нужно надеть?", "de": "Was soll man anziehen?"}, "options": ["Скромную одежду", "Шорты", "Купальник", "Ничего особенного"], "correctIndex": 0 },
+  { "id": 5, "text": {"ru": "Где встать в храме?", "de": "Wo steht man in der Kirche?"}, "options": ["Где не мешаешь", "На амвоне", "Возле алтаря", "На лестнице"], "correctIndex": 0 },
+  { "id": 6, "text": {"ru": "Можно ли разговаривать?", "de": "Darf man sprechen?"}, "options": ["Только по нужде шёпотом", "Да, громко", "Со всеми", "Нет"], "correctIndex": 0 },
+  { "id": 7, "text": {"ru": "Когда можно уйти?", "de": "Wann darf man gehen?"}, "options": ["По благословению", "Когда хочется", "После проповеди", "После песни"], "correctIndex": 0 },
+  { "id": 8, "text": {"ru": "Можно ли взять ребёнка?", "de": "Darf man ein Kind mitnehmen?"}, "options": ["Да", "Нет", "Если спит", "Если поёт"], "correctIndex": 0 },
+  { "id": 9, "text": {"ru": "Что делать с телефоном?", "de": "Was macht man mit dem Handy?"}, "options": ["Выключить или на беззвучный", "Звонить", "Играть", "Снимать"], "correctIndex": 0 },
+  { "id": 10, "text": {"ru": "Зачем идти в храм?", "de": "Warum geht man in die Kirche?"}, "options": ["Молиться и быть с Богом", "Показаться", "Посмеяться", "Сфоткаться"], "correctIndex": 0 }
+]
