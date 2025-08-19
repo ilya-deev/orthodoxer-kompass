@@ -5,7 +5,6 @@ import org.springframework.web.bind.annotation.*
 import org.telegram.telegrambots.meta.api.objects.Update
 
 @RestController
-
 class BotController(
     private val botService: BotService
 ) {

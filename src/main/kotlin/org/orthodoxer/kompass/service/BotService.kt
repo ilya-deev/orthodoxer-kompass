@@ -6,8 +6,8 @@ import jakarta.annotation.PostConstruct
 import org.orthodoxer.kompass.model.Question
 import org.orthodoxer.kompass.model.SessionState
 import org.springframework.stereotype.Service
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage
 import org.telegram.telegrambots.meta.api.objects.Update
-
 
 @Service
 class BotService {
@@ -20,24 +20,24 @@ class BotService {
     fun init() {
         val mapper = jacksonObjectMapper()
         modules["baptism"] = mapper.readValue(
-            BotService::class.java.getResource("/modules/baptism/questions.json")!!
+            javaClass.getResource("/modules/baptism/questions.json")!!
         )
         modules["first_visit"] = mapper.readValue(
-            BotService::class.java.getResource("/modules/first_visit/questions.json")!!
+            javaClass.getResource("/modules/first_visit/questions.json")!!
         )
     }
 
-    fun processUpdate(update: Update) {
-        val message = update.message ?: return
+    fun processUpdate(update: Update): SendMessage? {
+        val message = update.message ?: return null
         val chatId = message.chatId
-        val text = message.text ?: return
+        val text = message.text ?: return null
 
         val lang = langMap.getOrPut(chatId) { "ru" }
         val session = sessionMap.getOrPut(chatId) { SessionState() }
 
-        val reply = when (text) {
+        val replyText = when (text) {
             "/start" -> {
-                langMap[chatId] = "ru" // по умолчанию
+                langMap[chatId] = "ru"
                 "Выберите модуль: \n1. Хочу быть крестным\n2. Первый раз в церкви"
             }
             "1" -> {
@@ -53,19 +53,18 @@ class BotService {
             else -> handleAnswer(chatId, session, text)
         }
 
-        println("[BOT] To $chatId: $reply")
+        return SendMessage(chatId.toString(), replyText)
     }
 
     private fun nextQuestion(chatId: Long, session: SessionState): String {
         val questions = modules[session.module] ?: return "Модуль не найден."
         return if (session.currentQuestion >= questions.size) {
-            val result = "Вы прошли тест. Правильных ответов: ${session.correctAnswers} из ${questions.size}."
             sessionMap.remove(chatId)
-            result
+            "Вы прошли тест. Правильных ответов: ${session.correctAnswers} из ${questions.size}."
         } else {
             val q = questions[session.currentQuestion]
-            val optionsText = q.options.withIndex().joinToString("\n") { (i, opt) -> "${i + 1}. $opt" }
-            "${q.text[langMap[chatId] ?: "ru"]}\n$optionsText"
+            val options = q.options.withIndex().joinToString("\n") { (i, opt) -> "${i + 1}. $opt" }
+            "${q.text[langMap[chatId] ?: "ru"]}\n$options"
         }
     }
 

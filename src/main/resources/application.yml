@@ -23,3 +23,5 @@ spring:
 
 telegram:
   bot-token: ${TELEGRAM_BOT_TOKEN}
+  bot-username: "orthodoxer_kompass_bot"
+  webhook-path: "/webhook"
