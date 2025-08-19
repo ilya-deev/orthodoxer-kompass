@@ -36,3 +36,7 @@ kotlin {
         languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
+
+tasks.withType<JavaExec> {
+    jvmArgs = listOf("-Dfile.encoding=UTF-8")
+}
