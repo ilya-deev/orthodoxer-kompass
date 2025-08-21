@@ -36,138 +36,158 @@ class BotService {
         val text = message.text ?: return null
 
         val session = sessionMap.getOrPut(chatId) { SessionState() }
+        val lang = langMap[chatId]
 
-        if (!langMap.containsKey(chatId)) {
-            if (text.lowercase() == "ru" || text.lowercase() == "de") {
-                langMap[chatId] = text.lowercase()
-                return moduleSelectionMessage(chatId)
+        // 1. Выбор языка
+        if (lang == null) {
+            return when (text) {
+                "Русский" -> {
+                    langMap[chatId] = "ru"
+                    startModuleSelection(chatId, "ru")
+                }
+                "Deutsch" -> {
+                    langMap[chatId] = "de"
+                    startModuleSelection(chatId, "de")
+                }
+                else -> {
+                    val msg = SendMessage(chatId.toString(), "Выберите язык / Sprache auswählen")
+                    msg.replyMarkup = ReplyKeyboardMarkup(
+                        listOf(
+                            KeyboardRow(listOf(KeyboardButton("Русский"), KeyboardButton("Deutsch")))
+                        )
+                    ).apply {
+                        resizeKeyboard = true
+                        oneTimeKeyboard = true
+                    }
+                    msg
+                }
             }
-            return languageSelectionMessage(chatId)
         }
 
-        val lang = langMap[chatId]!!
-
-        if (session.module?.isBlank() == true) {
+        // 2. Выбор модуля
+        if (session.module.isEmpty()) {
             return when (text) {
                 "1" -> {
                     session.module = "baptism"
                     session.currentQuestion = 0
-                    nextQuestion(chatId, session, lang)
+                    nextQuestion(chatId, session)
                 }
                 "2" -> {
                     session.module = "first_visit"
                     session.currentQuestion = 0
-                    nextQuestion(chatId, session, lang)
+                    nextQuestion(chatId, session)
                 }
-                else -> moduleSelectionMessage(chatId)
+                else -> startModuleSelection(chatId, langMap[chatId]!!)
             }
         }
 
-        return handleAnswer(chatId, session, text, lang)
+        // 3. Обработка ответа
+        return handleAnswer(chatId, session, text)
     }
 
-    private fun languageSelectionMessage(chatId: Long): SendMessage {
-        val msg = SendMessage(chatId.toString(), "Выберите язык / Sprache wählen:")
-        val row = KeyboardRow()
-        row.add(KeyboardButton("ru"))
-        row.add(KeyboardButton("de"))
-
-        val markup = ReplyKeyboardMarkup()
-        markup.keyboard = listOf(row)
-        markup.resizeKeyboard = true
-        markup.oneTimeKeyboard = true
-        msg.replyMarkup = markup
-
-        return msg
-    }
-
-    private fun moduleSelectionMessage(chatId: Long): SendMessage {
-        val lang = langMap[chatId] ?: "ru"
+    private fun startModuleSelection(chatId: Long, lang: String): SendMessage {
         val text = when (lang) {
+            "ru" -> "Выберите модуль:\n1. Хочу быть крестным\n2. Первый раз в церкви"
             "de" -> "Wähle ein Modul:\n1. Ich will Pate werden\n2. Zum ersten Mal in der Kirche"
-            else -> "Выберите модуль:\n1. Хочу быть крестным\n2. Первый раз в церкви"
+            else -> "Выберите модуль"
         }
-        val msg = SendMessage(chatId.toString(), text)
-        val row = KeyboardRow()
-        row.add(KeyboardButton("1"))
-        row.add(KeyboardButton("2"))
-        val markup = ReplyKeyboardMarkup()
-        markup.keyboard = listOf(row)
-        markup.resizeKeyboard = true
-        markup.oneTimeKeyboard = true
-        msg.replyMarkup = markup
-        return msg
+        return SendMessage(chatId.toString(), text)
     }
 
-    private fun nextQuestion(chatId: Long, session: SessionState, lang: String): SendMessage {
+    private fun nextQuestion(chatId: Long, session: SessionState): SendMessage {
+        val lang = langMap[chatId] ?: "ru"
         val questions = modules[session.module] ?: return SendMessage(chatId.toString(), "Модуль не найден.")
 
         if (session.currentQuestion >= questions.size) {
+            val wrongQuestions = session.wrongAnswers.mapNotNull { wrongId ->
+                questions.find { it.id == wrongId }?.text?.get(lang)
+            }
+
             val resultText = buildString {
                 append(
                     when (lang) {
-                        "de" -> "Du hast den Test abgeschlossen.\n"
-                        else -> "Вы прошли тест.\n"
+                        "ru" -> "Вы прошли тест. Правильных ответов: ${session.correctAnswers} из ${questions.size}."
+                        "de" -> "Sie haben den Test abgeschlossen. Richtige Antworten: ${session.correctAnswers} von ${questions.size}."
+                        else -> ""
                     }
                 )
-                append("Правильных ответов: ${session.correctAnswers} из ${questions.size}.\n")
-                if (session.wrongAnswers.isNotEmpty()) {
+                if (wrongQuestions.isNotEmpty()) {
+                    append("\n\n")
                     append(
                         when (lang) {
-                            "de" -> "\nFragen mit falschen Antworten:\n"
-                            else -> "\nВопросы с неправильными ответами:\n"
+                            "ru" -> "Вопросы с ошибками:\n"
+                            "de" -> "Fragen mit Fehlern:\n"
+                            else -> ""
                         }
                     )
-                    session.wrongAnswers.forEach {
-                        append("- ${questions[it].text[lang]}\n")
+                    wrongQuestions.forEach {
+                        append("- $it\n")
                     }
                 }
             }
+
             sessionMap.remove(chatId)
-            return SendMessage(chatId.toString(), resultText)
+
+            val msg = SendMessage(chatId.toString(), resultText)
+            msg.replyMarkup = ReplyKeyboardMarkup(
+                listOf(
+                    KeyboardRow(listOf(KeyboardButton("🌐 Перейти к модулю"), KeyboardButton("🔁 Завершить тест")))
+                )
+            ).apply {
+                resizeKeyboard = true
+                oneTimeKeyboard = true
+            }
+
+            return msg
         }
 
         val q = questions[session.currentQuestion]
-        val options = q.options.withIndex().map { "${it.index + 1}. ${it.value}" }
-
-        val text = "${q.text[lang]}\n" + options.joinToString("\n")
-
-        val msg = SendMessage(chatId.toString(), text)
-        val markup = ReplyKeyboardMarkup()
-        markup.keyboard = q.options.chunked(2).map { rowOpts ->
-            val row = KeyboardRow()
-            rowOpts.forEachIndexed { i, opt ->
-                val index = q.options.indexOf(opt) + 1
-                row.add(KeyboardButton(index.toString()))
-            }
-            row
+        val optionsKeyboard = q.options.mapIndexed { index, _ ->
+            KeyboardRow(listOf(KeyboardButton((index + 1).toString())))
         }
-        markup.resizeKeyboard = true
-        markup.oneTimeKeyboard = true
-        msg.replyMarkup = markup
+
+        val msg = SendMessage(chatId.toString(), q.text[lang] ?: "Вопрос")
+        msg.replyMarkup = ReplyKeyboardMarkup().apply {
+            keyboard = optionsKeyboard
+            resizeKeyboard = true
+            oneTimeKeyboard = true
+        }
 
         return msg
     }
 
-    private fun handleAnswer(chatId: Long, session: SessionState, text: String, lang: String): SendMessage {
-        val index = text.toIntOrNull()?.minus(1)
+    private fun handleAnswer(chatId: Long, session: SessionState, text: String): SendMessage {
         val questions = modules[session.module] ?: return SendMessage(chatId.toString(), "Модуль не найден.")
-        val q = questions.getOrNull(session.currentQuestion) ?: return SendMessage(chatId.toString(), "Вопрос не найден.")
+        val lang = langMap[chatId] ?: "ru"
 
-        if (index == null || index !in q.options.indices) {
-            return SendMessage(chatId.toString(), when (lang) {
-                "de" -> "Bitte gib eine gültige Nummer ein."
-                else -> "Пожалуйста, введите номер варианта."
-            })
+        if (text == "🔁 Завершить тест") {
+            sessionMap.remove(chatId)
+            return SendMessage(chatId.toString(), if (lang == "ru") "Тест завершён. Нажмите /start." else "Test beendet. Tippen Sie /start.")
         }
 
-        if (index == q.correctIndex) {
+        if (text == "🌐 Перейти к модулю") {
+            val url = when (session.module) {
+                "baptism" -> "https://rocor-ingolstadt.de/"
+                "first_visit" -> "https://rocor-ingolstadt.de/"
+                else -> "https://orthodoxer-kompass.de"
+            }
+            return SendMessage(chatId.toString(), url)
+        }
+
+        val index = text.toIntOrNull()?.minus(1)
+        val currentQuestion = questions.getOrNull(session.currentQuestion)
+
+        if (index == null || currentQuestion == null) {
+            return SendMessage(chatId.toString(), if (lang == "ru") "Введите номер варианта." else "Bitte geben Sie die Nummer der Option ein.")
+        }
+
+        if (index == currentQuestion.correctIndex) {
             session.correctAnswers++
         } else {
-            session.wrongAnswers.add(session.currentQuestion)
+            session.wrongAnswers.add(currentQuestion.id)
         }
 
         session.currentQuestion++
-        return nextQuestion(chatId, session, lang)
+        return nextQuestion(chatId, session)
     }
 }
